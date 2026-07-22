@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grupo Yousef - Control de Entradas y Taller con Login</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Estilos específicos para Impresión */
+        @media print {
+            body > *:not(#modalReceipt) {
+                display: none !important;
+            }
+            
+            #modalReceipt {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
+                overflow: visible !important;
+                box-shadow: none !important;
+            }
+
+            #modalReceipt > div {
+                border: none !important;
+                box-shadow: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                transform: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            #modalReceipt .overflow-y-auto {
+                background: white !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+
+            #printReceiptContainer {
+                border: none !important;
+                box-shadow: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 10px !important;
+                margin: 0 !important;
+                background-color: white !important;
+                color: black !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar con Identificación de Usuario Logueado -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm no-print">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-100">
+                        <i data-lucide="wrench" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            Grupo Yousef
+                            <span id="activeStoreBadge" class="text-xs px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full font-bold">Cargando...</span>
+                        </h1>
+                        <p class="text-xs text-slate-500 font-medium">Control de Entradas, Diagnósticos, Retornos y Entregas</p>
+                    </div>
+                </div>
+
+                <!-- Botón de logout visible en pantallas pequeñas -->
+                <button onclick="logout()" class="md:hidden p-2 text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200" title="Cerrar Sesión">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                <!-- Buscador rápido por producto, serie, cliente o teléfono -->
+                <div class="relative flex-1 md:flex-initial">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="filterProducts()" placeholder="Buscar por S/N, comprobante, orden taller, cliente..." class="w-full md:w-80 pl-9 pr-4 py-2 bg-slate-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
+                </div>
+
+                <!-- Botón de Ingreso de Producto -->
+                <button onclick="openNewProductModal()" class="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-lg shadow-lg shadow-indigo-100 transition-all">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Registrar Ingreso</span>
+                </button>
+
+                <!-- Menú / Ficha del Usuario Activo -->
+                <div class="hidden md:flex items-center gap-3 pl-3 border-l border-slate-200">
+                    <div class="text-right">
+                        <p id="navUserName" class="text-xs font-extrabold text-slate-800">Usuario Activo</p>
+                        <p id="navUserRole" class="text-[10px] font-semibold text-slate-500 uppercase">Rol</p>
+                    </div>
+                    <button onclick="logout()" title="Cerrar Sesión" class="p-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg border border-slate-200 hover:border-rose-200 transition-all flex items-center justify-center">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 no-print">
+        
+        <!-- Alerta Global de Seguimiento de Taller -->
+        <div id="followUpAlertBanner" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div class="flex items-start gap-3">
+                <div class="p-2 bg-amber-100 text-amber-800 rounded-lg shrink-0">
+                    <i data-lucide="bell" class="w-5 h-5 animate-bounce"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-sm">Remitentes de Taller Pendientes</h3>
+                    <p class="text-xs text-slate-600">Tienes equipos con más de 5 días en el taller sin registrar gestiones de consulta de estado. Recuerda presionar al taller correspondiente.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="pendingAlertsBadge" class="px-2.5 py-1 bg-amber-600 text-white font-bold text-xs rounded-full shadow-sm">0 alertas</span>
+            </div>
+        </div>
+
+        <!-- Dashboard / Panel de Estadísticas -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <!-- Botón de Historial Total -->
+            <button onclick="openHistoryModal()" class="p-3 bg-indigo-50/60 hover:bg-indigo-100/80 border border-indigo-200/80 rounded-xl flex items-center justify-between gap-3 text-left transition-all group shadow-sm hover:shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-600 text-white rounded-lg group-hover:scale-105 transition-transform">
+                        <i data-lucide="history" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                            Historial Total
+                            <i data-lucide="external-link" class="w-3 h-3 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </p>
+                        <h3 id="statTotal" class="text-xl font-black text-indigo-950 font-mono">0</h3>
+                    </div>
+                </div>
+                <div class="text-[10px] font-bold text-indigo-600 bg-white border border-indigo-200 px-2 py-1 rounded-md hidden sm:block group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    Ver todo
+                </div>
+            </button>
+
+            <div class="p-3 bg-slate-50 rounded-lg flex items-center gap-3 border border-slate-100">
+                <div class="p-2 bg-sky-100 text-sky-600 rounded-lg">
+                    <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">En Entrada/Espera</p>
+                    <h3 id="statEntrada" class="text-lg font-bold text-sky-700 font-mono">0</h3>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg flex items-center gap-3 border border-slate-100">
+                <div class="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                    <i data-lucide="cog" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">En Taller</p>
+                    <h3 id="statTaller" class="text-lg font-bold text-amber-700 font-mono">0</h3>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg flex items-center gap-3 border border-slate-100">
+                <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Listo p/ Entrega</p>
+                    <h3 id="statRetornado" class="text-lg font-bold text-emerald-700 font-mono">0</h3>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg flex items-center gap-3 col-span-2 lg:col-span-1 border border-slate-100">
+                <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <i data-lucide="user-check" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Entregados Activos</p>
+                    <h3 id="statEntregado" class="text-lg font-bold text-indigo-700 font-mono">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanban Grid para Procesos de Taller (4 Columnas) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 flex-1 items-start">
+            
+            <!-- COLUMNA 1: ENTRADA DE PRODUCTO -->
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200 shadow-inner flex flex-col max-h-[75vh]">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></span>
+                        <h2 class="font-bold text-slate-700 text-sm">1. Entrada / Recepción</h2>
+                        <span id="countEntrada" class="ml-1 text-xs px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full font-bold">0</span>
+                    </div>
+                </div>
+                <div id="col-entrada" class="space-y-3 overflow-y-auto pr-1 flex-1 min-h-[250px]" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'entrada')">
+                    <!-- Productos dinámicos -->
+                </div>
+            </div>
+
+            <!-- COLUMNA 2: EN TALLER -->
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200 shadow-inner flex flex-col max-h-[75vh]">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <h2 class="font-bold text-slate-700 text-sm">2. En Taller</h2>
+                        <span id="countTaller" class="ml-1 text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">0</span>
+                    </div>
+                </div>
+                <div id="col-taller" class="space-y-3 overflow-y-auto pr-1 flex-1 min-h-[250px]" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'taller')">
+                    <!-- Productos dinámicos -->
+                </div>
+            </div>
+
+            <!-- COLUMNA 3: RETORNADO DE TALLER -->
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200 shadow-inner flex flex-col max-h-[75vh]">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h2 class="font-bold text-slate-700 text-sm">3. Retornado / Listo</h2>
+                        <span id="countRetornado" class="ml-1 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">0</span>
+                    </div>
+                </div>
+                <div id="col-retornado" class="space-y-3 overflow-y-auto pr-1 flex-1 min-h-[250px]" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'retornado')">
+                    <!-- Productos dinámicos -->
+                </div>
+            </div>
+
+            <!-- COLUMNA 4: ENTREGADO A CLIENTE -->
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200 shadow-inner flex flex-col max-h-[75vh]">
+                <div class="flex flex-col pb-3 border-b border-slate-200 mb-4 px-1 gap-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <h2 class="font-bold text-slate-700 text-sm">4. Entregado a Cliente</h2>
+                            <span id="countEntregado" class="ml-1 text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-bold">0</span>
+                        </div>
+                    </div>
+                    <span class="text-[9px] text-slate-500 italic leading-none font-medium mt-0.5">Auto-archivado a las 24 hrs. Búsqueda permanente.</span>
+                </div>
+                <div id="col-entregado" class="space-y-3 overflow-y-auto pr-1 flex-1 min-h-[250px]" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'entregado')">
+                    <!-- Productos dinámicos -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL DE LOGIN / AUTENTICACIÓN -->
+    <div id="modalLogin" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden transform transition-all">
+            <!-- Header Modal Login -->
+            <div class="p-8 text-center bg-indigo-600 text-white relative">
+                <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm shadow-inner">
+                    <i data-lucide="shield-check" class="w-9 h-9 text-white"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold tracking-tight">Grupo Yousef</h2>
+                <p class="text-xs text-indigo-100 mt-1 font-medium">Control de Entradas y Taller Técnico</p>
+            </div>
+
+            <!-- Formulario de Login -->
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="p-8 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre de Usuario</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="loginUsername" required placeholder="Ingrese su usuario..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </span>
+                        <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                </div>
+
+                <!-- Mensaje de Error en Login -->
+                <div id="loginErrorMsg" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl font-semibold flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                    <span id="loginErrorText">Usuario o contraseña incorrectos.</span>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-100 transition-all flex items-center justify-center gap-2">
+                    <span>Iniciar Sesión</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR INGRESO (NUEVO PRODUCTO) -->
+    <div id="modalNewProduct" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg transform scale-95 transition-all duration-300 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-indigo-50/50">
+                <div class="flex items-center gap-2 text-indigo-700">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-slate-900 font-sans">Registrar Ingreso de Producto</h3>
+                </div>
+                <button onclick="closeNewProductModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="productForm" onsubmit="saveProduct(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                
+                <!-- SELECCIÓN DE TIENDA DE RECEPCIÓN ADAPTADA A PERMISOS DEL USUARIO LOGUEADO -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Tienda de Recepción</label>
+                    <div id="storeRadioGroup" class="grid grid-cols-2 gap-2">
+                        <!-- Generado dinámicamente según permisos -->
+                    </div>
+
+                    <!-- Tarjeta con la información de la Tienda Seleccionada -->
+                    <div id="storeInfoCard" class="mt-2.5 p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs space-y-1">
+                        <p class="text-indigo-900 font-bold flex items-center gap-1.5">
+                            <i data-lucide="store" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span id="previewStoreName">Cargando...</span>
+                        </p>
+                        <p class="text-slate-600 text-[11px] flex items-center gap-1.5">
+                            <i data-lucide="map-pin" class="w-3 h-3 text-slate-400 shrink-0"></i>
+                            <span id="previewStoreAddress">--</span>
+                        </p>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-slate-600 text-[11px] pt-0.5">
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="phone" class="w-3 h-3 text-slate-400"></i>
+                                <span id="previewStorePhone">--</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="mail" class="w-3 h-3 text-slate-400"></i>
+                                <span id="previewStoreEmail">--</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Tipo de Artículo</label>
+                        <select id="prodArticleType" onchange="handleArticleTypeChange()" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none bg-white transition-all">
+                            <option value="Televisor">Televisor</option>
+                            <option value="Microondas">Microondas</option>
+                            <option value="Oasis">Oasis</option>
+                            <option value="Ventilador">Ventilador</option>
+                            <option value="Licuadora">Licuadora</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                        <input type="text" id="prodArticleTypeCustom" placeholder="Especificar qué tipo de artículo..." class="hidden mt-2 w-full px-3.5 py-2 bg-amber-50/50 border border-amber-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Marca</label>
+                        <select id="prodBrand" onchange="handleBrandChange()" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none bg-white transition-all">
+                        </select>
+                        <input type="text" id="prodBrandCustom" placeholder="Especificar qué marca..." class="hidden mt-2 w-full px-3.5 py-2 bg-amber-50/50 border border-amber-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Modelo / Detalle de Producto</label>
+                        <input type="text" id="prodModel" required placeholder="Ej: Smart TV 55'' / Mod: X3" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Número de Serie / ID único</label>
+                        <input type="text" id="prodSerial" required placeholder="Ej: SN-49204A81" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Accesorios Entregados</label>
+                    <div id="accessoriesContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    </div>
+                    <input type="text" id="prodAccessoryCustom" placeholder="Especificar otros accesorios..." class="hidden mt-2 w-full px-3.5 py-2 bg-amber-50/50 border border-amber-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre del Cliente / Propietario</label>
+                        <input type="text" id="prodClient" required placeholder="Ej: Carlos Mendoza" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Número de Teléfono</label>
+                        <input type="tel" id="prodPhone" required placeholder="Ej: 8857-2997" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Falla Reportada o Diagnóstico Inicial</label>
+                    <textarea id="prodDesc" rows="3" required placeholder="Ej: No enciende, parpadea luz LED blanca..." class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Prioridad de Reparación</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                            <input type="radio" name="priority" value="Baja" checked class="text-emerald-500 focus:ring-emerald-400">
+                            <span class="text-xs font-semibold text-slate-600">Baja</span>
+                        </label>
+                        <label class="border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                            <input type="radio" name="priority" value="Media" class="text-amber-500 focus:ring-amber-400">
+                            <span class="text-xs font-semibold text-slate-600">Media</span>
+                        </label>
+                        <label class="border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                            <input type="radio" name="priority" value="Alta" class="text-rose-500 focus:ring-rose-400">
+                            <span class="text-xs font-semibold text-slate-600">Alta</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                    <button type="button" onclick="closeNewProductModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-all">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg shadow-md transition-all">Registrar e Imprimir Hoja</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CAMBIO DE ESTADO CON NÚMERO DE ORDEN Y REPARACIÓN OBLIGATORIA -->
+    <div id="modalTransition" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg transform scale-95 transition-all duration-300 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/50">
+                <div class="flex items-center gap-2 text-amber-700">
+                    <i data-lucide="message-square" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-slate-900 font-sans">Registrar Transición de Estado</h3>
+                </div>
+                <button onclick="cancelTransition()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <p id="transitionNotice" class="text-sm text-slate-600 font-medium bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    Estás a punto de cambiar el estado del equipo.
+                </p>
+
+                <!-- Bloque Selección de Taller (Se activa solo si se manda a TALLER) -->
+                <div id="workshopSelectBlock" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Seleccionar Taller de Destino</label>
+                    <select id="transitionWorkshop" class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none bg-white transition-all">
+                        <option value="LATIN">LATIN</option>
+                        <option value="SERVITECA">SERVITECA</option>
+                        <option value="INTERNO">INTERNO</option>
+                    </select>
+                </div>
+                
+                <!-- BLOQUE OBLIGATORIO: REGRESO DE TALLER (Orden + Reparación Realizada) -->
+                <div id="workshopReturnBlock" class="hidden space-y-3 bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
+                    <div class="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider border-b border-emerald-200 pb-2">
+                        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Datos de Retorno de Taller (Obligatorios)</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Número de Orden del Taller <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="transitionWorkshopOrder" placeholder="Ej: ORD-2026-9814" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-sm font-mono font-bold text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Reparación Realizada / Solución Aplicada <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea id="transitionRepairDetails" rows="3" placeholder="Ej: Se reemplazó la tarjeta principal de alimentación y se realizaron pruebas de encendido continuo durante 24 horas." class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"></textarea>
+                    </div>
+
+                    <!-- Botones Rápidos de Reparación Común -->
+                    <div>
+                        <p class="text-[10px] font-bold text-emerald-800 uppercase mb-1">Respuestas rápidas de reparación:</p>
+                        <div class="flex flex-wrap gap-1 font-sans">
+                            <button type="button" onclick="applyQuickRepair('Se cambió fuente de poder y condensadores.')" class="text-[10px] bg-white hover:bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all">Fuente/Condensadores</button>
+                            <button type="button" onclick="applyQuickRepair('Reemplazo de tarjeta principal (Mainboard) y pruebas.')" class="text-[10px] bg-white hover:bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all">Tarjeta Mainboard</button>
+                            <button type="button" onclick="applyQuickRepair('Resoldado de conectores y mantenimiento preventivo.')" class="text-[10px] bg-white hover:bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all">Mantenimiento/Suelda</button>
+                            <button type="button" onclick="applyQuickRepair('Cambio de fusible térmico y limpieza de circuito.')" class="text-[10px] bg-white hover:bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all">Fusible/Limp.</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comentario general de la bitácora -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Comentario General / Nota Adicional</label>
+                    <textarea id="transitionComment" rows="2" placeholder="Notas adicionales de la recepción o instrucciones..." class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition-all"></textarea>
+                </div>
+
+                <!-- Mensaje de error general si faltan campos -->
+                <p id="transitionErrorMsg" class="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200 font-bold hidden flex items-center gap-1.5">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+                    <span id="transitionErrorText">Debes ingresar el Número de Orden de Taller y la Reparación Realizada para poder retornar el equipo.</span>
+                </p>
+
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Comentarios rápidos recomendados:</p>
+                    <div id="quickComments" class="flex flex-wrap gap-1.5 font-sans">
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                    <button type="button" onclick="cancelTransition()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-all">Cancelar</button>
+                    <button type="button" onclick="confirmTransition()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Confirmar Cambio de Estado</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR GESTIÓN DE CONSULTA -->
+    <div id="modalInquiry" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md transform scale-95 transition-all duration-300 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50">
+                <div class="flex items-center gap-2 text-amber-800">
+                    <i data-lucide="phone-call" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-slate-900 font-sans">Registrar Gestión de Consulta</h3>
+                </div>
+                <button onclick="closeInquiryModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p id="inquiryProductText" class="text-xs text-slate-600 font-medium bg-slate-50 p-3 rounded-lg border border-slate-200 leading-relaxed">
+                    Registra qué acción tomaste hoy para consultar el estado del equipo. Esto reiniciará la alerta de 5 días.
+                </p>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Nota de la gestión realizada (Obligatorio)</label>
+                    <textarea id="inquiryComment" rows="3" placeholder="Ej: Se llamó al técnico de LATIN, indica que están esperando integrados de alimentación." class="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition-all"></textarea>
+                    <p id="inquiryErrorMsg" class="text-xs text-rose-500 mt-1 font-semibold hidden">Por favor ingresa una nota sobre la gestión realizada.</p>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Comentarios rápidos de consulta:</p>
+                    <div class="flex flex-wrap gap-1.5 font-sans">
+                        <button type="button" onclick="applyQuickInquiry('Se llama por teléfono para consultar estado; técnico indica que sigue en revisión.')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded border border-slate-200 transition-all">Llamada telefónica (En revisión)</button>
+                        <button type="button" onclick="applyQuickInquiry('Se contacta al taller de destino para presionar por repuestos pendientes.')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded border border-slate-200 transition-all">Presionar por repuestos</button>
+                        <button type="button" onclick="applyQuickInquiry('Técnico asignado reporta avance parcial; se espera finalización en 48 horas.')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded border border-slate-200 transition-all">Avance parcial (48h)</button>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                    <button type="button" onclick="closeInquiryModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-all">Cancelar</button>
+                    <button type="button" onclick="saveInquiryManagement()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-semibold rounded-lg shadow-md transition-all">Guardar Gestión y Reiniciar Alerta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALLES DE PRODUCTO E HISTORIAL COMPLETO -->
+    <div id="modalDetails" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-xl transform scale-95 transition-all duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <span id="detailPriority" class="text-xs px-2.5 py-0.5 rounded-full font-bold">Media</span>
+                    <span id="detailStatus" class="text-xs px-2.5 py-0.5 rounded-full font-bold">En Taller</span>
+                </div>
+                <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- Contenido scrollable -->
+            <div class="p-6 space-y-6 overflow-y-auto flex-1">
+                <div>
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 id="detailTitle" class="text-xl font-bold text-slate-900 mb-1 leading-tight">Laptop HP Pavilion</h2>
+                            <span id="detailWorkshopBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+                        </div>
+                        <button onclick="reprintFromDetails()" class="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all">
+                            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                            <span>Imprimir Hoja Cliente</span>
+                        </button>
+                    </div>
+                    <div id="detailSpecsBlock" class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-indigo-50/30 p-3 rounded-xl border border-indigo-100 text-xs mt-3">
+                        <div>
+                            <span class="text-slate-400 font-bold uppercase tracking-wider text-[9px] block">Artículo</span>
+                            <span id="detailArticleType" class="text-slate-800 font-semibold text-sm">Cargando...</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-bold uppercase tracking-wider text-[9px] block">Marca</span>
+                            <span id="detailBrand" class="text-slate-800 font-semibold text-sm">Cargando...</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-slate-400 font-bold uppercase tracking-wider text-[9px] block">Tienda Recepción</span>
+                            <span id="detailStore" class="text-indigo-800 font-bold text-sm block">Cargando...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-500 mt-4 pb-4 border-b border-slate-100">
+                        <span class="flex items-center gap-1"><i data-lucide="barcode" class="w-3.5 h-3.5"></i> <strong class="text-slate-700">S/N:</strong> <span id="detailSerial" class="font-mono font-medium">SN-00000</span></span>
+                        <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> <strong class="text-slate-700">Cliente:</strong> <span id="detailClient" class="font-medium">Desconocido</span></span>
+                        <span class="flex items-center gap-1"><i data-lucide="phone" class="w-3.5 h-3.5"></i> <strong class="text-slate-700">Tel:</strong> <span id="detailPhone" class="font-mono font-medium">--</span></span>
+                    </div>
+
+                    <!-- TARJETA ESPECIAL: INFORMACIÓN DE REPARACIÓN DE TALLER -->
+                    <div id="detailWorkshopRepairBox" class="mt-4 hidden p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs space-y-2">
+                        <div class="flex items-center justify-between border-b border-emerald-200 pb-2">
+                            <span class="font-extrabold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+                                Reparación Realizada en Taller
+                            </span>
+                            <span id="detailWorkshopOrderTag" class="px-2 py-0.5 bg-emerald-700 text-white font-mono font-bold rounded text-[11px]">
+                                Orden: --
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 font-bold block text-[10px] uppercase">Detalle de Solución / Trabajo Aplicado:</span>
+                            <p id="detailWorkshopRepairText" class="text-slate-800 font-medium text-xs mt-0.5 leading-relaxed bg-white p-2.5 rounded-lg border border-emerald-100">
+                                --
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <i data-lucide="package-open" class="w-3.5 h-3.5"></i> Accesorios Entregados
+                        </h4>
+                        <div id="detailAccessories" class="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Descripción / Falla inicial:</h4>
+                        <p id="detailDesc" class="text-sm text-slate-600 whitespace-pre-line leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-150">Diagnóstico detallado.</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5 font-sans">
+                        <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
+                        Bitácora de Seguimiento de Taller
+                    </h4>
+                    
+                    <div id="detailTimeline" class="space-y-4 relative before:absolute before:inset-y-0 before:left-3 before:w-0.5 before:bg-slate-200">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Comentarios rápidos directos -->
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <input type="text" id="directCommentInput" placeholder="Escribir avance sin cambiar de columna..." class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 outline-none transition-all">
+                    <button onclick="addDirectComment()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Bitácora</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN -->
+    <div id="modalDelete" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md transform scale-95 transition-all duration-300 overflow-hidden">
+            <div class="p-6 text-center space-y-4">
+                <div class="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-600">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-lg font-sans">¿Eliminar registro de equipo?</h3>
+                    <p id="deleteModalMessage" class="text-sm text-slate-500 mt-1">Esta acción borrará permanentemente el registro del taller.</p>
+                </div>
+                <div class="flex items-center justify-center gap-3 pt-2">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-all flex-1">Cancelar</button>
+                    <button id="btnConfirmDelete" type="button" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex-1">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL TOTAL DE PRODUCTOS -->
+    <div id="modalFullHistory" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl transform scale-95 transition-all duration-300 overflow-hidden flex flex-col max-h-[92vh]">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-indigo-600 rounded-xl">
+                        <i data-lucide="history" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight font-sans">Historial Total de Registro de Productos</h3>
+                        <p class="text-xs text-slate-400">Consulta global de todos los equipos recibidos, sus estados actuales, reparaciones y comprobantes.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="modalHistoryCounter" class="px-3 py-1 bg-indigo-900/80 border border-indigo-700 text-indigo-200 text-xs font-mono font-bold rounded-full">0 Registros</span>
+                    <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-all">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de búsqueda del historial -->
+            <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="relative md:col-span-2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <input type="text" id="historySearchInput" oninput="renderHistoryTable()" placeholder="Buscar por S/N, N° Orden Taller, comprobante N°, producto, cliente..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                </div>
+
+                <div>
+                    <select id="historyStatusFilter" onchange="renderHistoryTable()" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                        <option value="ALL">Todos los estados (Todos)</option>
+                        <option value="entrada">1. En Entrada / Recepción</option>
+                        <option value="taller">2. En Taller</option>
+                        <option value="retornado">3. Retornado / Listo para Entrega</option>
+                        <option value="entregado">4. Entregado a Cliente</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabla de Historial -->
+            <div class="overflow-x-auto flex-1 p-4 bg-slate-50/50">
+                <table class="w-full text-left border-collapse bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4 font-bold">Comprobante</th>
+                            <th class="py-3 px-4 font-bold">Fecha Ingreso</th>
+                            <th class="py-3 px-4 font-bold">Producto / S/N</th>
+                            <th class="py-3 px-4 font-bold">Cliente / Contacto</th>
+                            <th class="py-3 px-4 font-bold">Tienda Recepción</th>
+                            <th class="py-3 px-4 font-bold">Estado Actual / Orden Taller</th>
+                            <th class="py-3 px-4 font-bold text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100 text-xs">
+                        <!-- Filas renderizadas dinámicamente -->
+                    </tbody>
+                </table>
+                <div id="historyEmptyState" class="hidden text-center py-12">
+                    <i data-lucide="inbox" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
+                    <p class="text-sm font-semibold text-slate-500">No se encontraron productos en el historial con los criterios especificados.</p>
+                </div>
+            </div>
+
+            <!-- Footer del Modal -->
+            <div class="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
+                <span class="text-xs text-slate-400">Haz clic en la lupa de acciones para inspeccionar la bitácora completa o imprimir la hoja.</span>
+                <button onclick="closeHistoryModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all">
+                    Cerrar Historial
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VISTA PREVIA E IMPRESIÓN DEL COMPROBANTE DE 4 DÍGITOS -->
+    <div id="modalReceipt" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl transform scale-95 transition-all duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-150 flex items-center justify-between bg-indigo-600 text-white no-print">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <h3 class="font-bold text-lg font-sans">Comprobante de Ingreso al Taller</h3>
+                </div>
+                <button onclick="closeReceiptModal()" class="text-white hover:text-indigo-100 p-1 rounded-lg hover:bg-indigo-700 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- Vista Previa del Documento -->
+            <div class="p-6 overflow-y-auto flex-1 bg-slate-100">
+                <div id="printReceiptContainer" class="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-slate-200 max-w-xl mx-auto text-sm text-slate-800 space-y-6">
+                    
+                    <!-- Encabezado del Recibo con Datos Dinámicos según la Tienda -->
+                    <div class="flex justify-between items-start border-b border-slate-200 pb-4">
+                        <div class="space-y-1 max-w-[65%]">
+                            <div class="flex items-center gap-2 text-indigo-600 font-bold text-lg">
+                                <i data-lucide="wrench" class="w-5 h-5"></i>
+                                <span>Grupo Yousef</span>
+                            </div>
+                            <p class="text-xs text-slate-500 font-medium">Servicio Técnico Especializado</p>
+                            <!-- Dirección adaptativa de la tienda -->
+                            <p class="text-[10px] text-slate-600 font-medium leading-tight flex items-start gap-1 mt-1" id="receiptStoreAddress">
+                                <i data-lucide="map-pin" class="w-3 h-3 text-indigo-500 shrink-0 mt-0.5"></i>
+                                <span>--</span>
+                            </p>
+                            <!-- Teléfono y Correo adaptativos -->
+                            <p class="text-[10px] text-slate-600 font-medium leading-tight flex items-center gap-1.5 flex-wrap" id="receiptStoreContact">
+                                <span><strong class="text-slate-700">Tel:</strong> +(504) <span id="receiptStorePhone">--</span></span>
+                                <span>|</span>
+                                <span><strong class="text-slate-700">Correo:</strong> <span id="receiptStoreEmail">--</span></span>
+                            </p>
+                        </div>
+                        <div class="text-right flex flex-col items-end">
+                            <span class="inline-block px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-bold mb-1">COMPROBANTE DE ENTRADA</span>
+                            <!-- Número de comprobante corto de 4 dígitos -->
+                            <p class="text-sm font-extrabold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-md font-mono tracking-widest my-1 shadow-sm" id="receiptNumber">N° 0000</p>
+                            <p class="text-[10px] text-slate-400 mb-1" id="receiptDate">Fecha: --/--/----</p>
+                            <p class="text-xs text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200" id="receiptHeaderStore">Tienda: --</p>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Cliente -->
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-2 border-b border-indigo-100 pb-1 font-sans">Datos del Cliente</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-400 font-semibold">Propietario / Cliente:</span>
+                                <p id="receiptClientName" class="font-bold text-slate-800 text-sm">--</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-semibold">Teléfono de Notificación:</span>
+                                <p id="receiptClientPhone" class="font-bold text-slate-800 text-sm">--</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-semibold">Fecha de Ingreso:</span>
+                                <p id="receiptDateTime" class="font-bold text-slate-800">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalles del Equipo -->
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-2 border-b border-indigo-100 pb-1 font-sans">Especificaciones del Equipo</h4>
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <span class="text-slate-400 font-semibold block">Artículo / Dispositivo:</span>
+                                <span id="receiptArticleType" class="font-bold text-slate-800">--</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-semibold block">Marca:</span>
+                                <span id="receiptBrand" class="font-bold text-slate-800">--</span>
+                            </div>
+                            <div class="col-span-2">
+                                <span class="text-slate-400 font-semibold block">Modelo / Especificación:</span>
+                                <span id="receiptModel" class="font-bold text-slate-800">--</span>
+                            </div>
+                            <div class="col-span-2">
+                                <span class="text-slate-400 font-semibold block">Número de Serie (S/N):</span>
+                                <span id="receiptSerial" class="font-mono font-bold text-slate-800 tracking-wider">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accesorios Recibidos -->
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-2 border-b border-indigo-100 pb-1 font-sans">Accesorios Entregados</h4>
+                        <div id="receiptAccessories" class="flex flex-wrap gap-1.5 pt-1">
+                        </div>
+                    </div>
+
+                    <!-- Reporte de Falla / Diagnóstico Inicial -->
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-2 border-b border-indigo-100 pb-1 font-sans">Falla Reportada o Diagnóstico Inicial</h4>
+                        <p id="receiptDiagnostic" class="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 italic whitespace-pre-wrap leading-relaxed">
+                            --
+                        </p>
+                    </div>
+
+                    <!-- SECCIÓN DINÁMICA DE REPARACIÓN DE TALLER EN EL RECIBO -->
+                    <div id="receiptRepairBlock" class="hidden">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-2 border-b border-emerald-100 pb-1 font-sans flex items-center justify-between">
+                            <span>Reparación Realizada en Taller</span>
+                            <span id="receiptWorkshopOrderLabel" class="font-mono text-slate-600 text-[10px]">N° Orden: --</span>
+                        </h4>
+                        <p id="receiptRepairText" class="text-xs text-emerald-950 bg-emerald-50/60 p-3 rounded-lg border border-emerald-200 leading-relaxed font-medium">
+                            --
+                        </p>
+                    </div>
+
+                    <!-- Términos y Condiciones de Seguridad -->
+                    <div class="text-[9px] text-slate-400 leading-normal space-y-1 pt-2 border-t border-slate-100">
+                        <p class="font-bold uppercase tracking-wider text-slate-500">Términos del Servicio Técnico:</p>
+                        <p>1. Todo equipo no retirado después de noventa (90) días calendario de haber sido notificado como "Listo para entrega" se declarará en abandono y pasará a ser propiedad del taller para cubrir costos de almacenamiento o repuestos.</p>
+                        <p>2. La garantía cubre únicamente la mano de obra y repuestos sustituidos durante un período de treinta (30) días a partir de la entrega física.</p>
+                        <p>3. CLÁUSULA ANTIFRAUDE: Para el retiro del equipo es strictly OBLIGATORIO presentar este comprobante en FÍSICO y ORIGINAL. No se aceptan fotocopias, fotografías en celular ni capturas de pantalla. Este documento será RETENIDO por el taller como comprobante de retiro conforme.</p>
+                        <p>4. En los servicios de garantía, se aplican las políticas establecidas por el fabricante.</p>
+                    </div>
+
+                    <!-- Espacio de Firmas -->
+                    <div class="grid grid-cols-2 gap-8 pt-10 text-center text-[10px]">
+                        <div class="space-y-1 flex flex-col justify-end">
+                            <div class="border-b border-slate-300 w-full h-8"></div>
+                            <p class="font-bold text-slate-600">Firma del Cliente (Conformidad)</p>
+                            <p class="text-[9px] text-slate-400">Acepta términos y condiciones de recepción</p>
+                        </div>
+                        <div class="space-y-1 flex flex-col justify-end">
+                            <div class="border-b border-slate-300 w-full h-8"></div>
+                            <p class="font-bold text-slate-600">Firma de Recepción (Taller)</p>
+                            <p class="text-[9px] text-slate-400" id="receiptReceptor">Grupo Yousef Authorized Staff</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer del Modal -->
+            <div class="p-4 bg-slate-50 border-t border-slate-150 flex justify-end gap-3 no-print">
+                <button onclick="closeReceiptModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-all">
+                    Cerrar y Volver al Tablero
+                </button>
+                <button onclick="printReceipt()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-lg shadow-lg shadow-indigo-100 flex items-center gap-2 transition-all">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Imprimir Comprobante</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE LOGICA Y SISTEMA DE AUTENTICACION CON ROLES POR TIENDAS -->
+    <script>
+        // Base de Datos de Usuarios del Sistema y sus Tiendas Asignadas
+        const SYSTEM_USERS = [
+            {
+                username: "plaza_panorama",
+                password: "123",
+                name: "Atención Plaza & Panorama",
+                role: "Encargado de Tienda",
+                allowedStores: ["Plaza Panamá", "Panorama Int."]
+            },
+            {
+                username: "doshermanos_favorito",
+                password: "123",
+                name: "Atención Dos Hermanos & Favorito",
+                role: "Encargado de Tienda",
+                allowedStores: ["Dos Hermanos", "Impo. El Favorito"]
+            },
+            {
+                username: "admin",
+                password: "admin123",
+                name: "Administración General",
+                role: "Administrador Global",
+                allowedStores: ["Dos Hermanos", "Impo. El Favorito", "Plaza Panamá", "Panorama Int."]
+            }
+        ];
+
+        // Usuario actualmente en sesión
+        let currentUser = null;
+
+        // Límite de tiempo para auto-archivar de la visualización normal: 24 Horas
+        const ARCHIVE_TIMEOUT_MS = 24 * 60 * 60 * 1000; 
+
+        // Alerta tras 5 días sin movimientos
+        const FOLLOW_UP_INTERVAL_MS = 5 * 24 * 60 * 60 * 1000; 
+
+        // Diccionario completo de tiendas de Grupo Yousef
+        const STORES_INFO = {
+            "Dos Hermanos": {
+                address: "Cortes, San Pedro Sula, Barrio El Centro 7ma calle, 3 y 4 avn",
+                phone: "8857-2997",
+                email: "taller.almacendoshermanos@gmail.com"
+            },
+            "Impo. El Favorito": {
+                address: "Cortes, San Pedro Sula, Barrio El Centro entre 6 y 7 calle, 4 avn",
+                phone: "8857-2997",
+                email: "taller.almacendoshermanos@gmail.com"
+            },
+            "Panorama Int.": {
+                address: "Cortes, San Pedro Sula, Barrio El Centro 6ta calle, 5ta avn",
+                phone: "8857-6545",
+                email: "sac.grupoyousef2022@gmail.com"
+            },
+            "Plaza Panamá": {
+                address: "Cortes, San Pedro Sula, Barrio El Centro 6ta calle, 4 y 5 avn",
+                phone: "8857-6545",
+                email: "sac.grupoyousef2022@gmail.com"
+            }
+        };
+
+        // Mapeo dinámico de Artículos -> Marcas y Accesorios
+        const ARTICLE_CONFIG = {
+            Televisor: {
+                brands: ["Sankey", "RCA", "Westinghouse", "Oster", "Hamilton", "Otro"],
+                accessories: ["Bases", "Control", "Caja", "Cable de alimentación", "Otro"]
+            },
+            Microondas: {
+                brands: ["Oster", "Hamilton", "RCA", "Westinghouse", "Sankey", "Otro"],
+                accessories: ["Plato", "Mariposa", "Aro", "Caja", "Otro"]
+            },
+            Oasis: {
+                brands: ["Sankey", "RCA", "Westinghouse", "Oster", "Hamilton", "Otro"],
+                accessories: ["Portavaso", "Filtro", "Caja", "Otro"]
+            },
+            Ventilador: {
+                brands: ["Westinghouse", "Sankey", "Oster", "Hamilton", "Otro"],
+                accessories: ["Completo", "Solo motor", "Otro"]
+            },
+            Licuadora: {
+                brands: ["Oster", "Hamilton", "Otro"],
+                accessories: ["Vaso", "Motor", "Otro"]
+            },
+            Otro: {
+                brands: ["Oster", "Sankey", "RCA", "Westinghouse", "Hamilton", "Otro"],
+                accessories: ["Caja", "Cable de alimentación", "Otro"]
+            }
+        };
+
+        // Base de Datos inicial de Equipos
+        let products = [
+            {
+                id: "prod-1",
+                receiptCode: "0000",
+                product: "Televisor Sankey - Smart 43 Pulgadas",
+                articleType: "Televisor",
+                brand: "Sankey",
+                model: "Smart 43 Pulgadas",
+                accessories: ["Control", "Bases"],
+                serial: "EPS-981249-LT",
+                client: "Julio Valladares",
+                phone: "8857-2997",
+                store: "Dos Hermanos",
+                desc: "No enciende, emite destellos intermitentes.",
+                priority: "Media",
+                status: "entrada",
+                workshop: null,
+                workshopOrderNumber: null,
+                repairDetails: null,
+                createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                enteredTallerAt: null,
+                lastInquiryAt: null,
+                history: [
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+                        text: "Producto ingresado en Dos Hermanos. Accesorios: Control, Bases.",
+                        type: "create",
+                        from: null,
+                        to: "entrada"
+                    }
+                ]
+            },
+            {
+                id: "prod-2",
+                receiptCode: "0001",
+                product: "Microondas Oster - Grill Pro 30L",
+                articleType: "Microondas",
+                brand: "Oster",
+                model: "Grill Pro 30L",
+                accessories: ["Plato", "Aro"],
+                serial: "PS5-728109312",
+                client: "Mariana Rojas",
+                phone: "9910-4422",
+                store: "Impo. El Favorito",
+                desc: "No calienta la comida pero sí enciende el plato.",
+                priority: "Alta",
+                status: "taller",
+                workshop: "LATIN",
+                workshopOrderNumber: null,
+                repairDetails: null,
+                createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
+                enteredTallerAt: new Date(Date.now() - 86400000 * 6).toISOString(),
+                lastInquiryAt: null,
+                history: [
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 7).toISOString(),
+                        text: "Ingreso de microondas registrado en Impo. El Favorito con plato y aro.",
+                        type: "create",
+                        from: null,
+                        to: "entrada"
+                    },
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 6).toISOString(),
+                        text: "Remitido al taller LATIN. Se inicia desarmado para verificar componentes.",
+                        type: "transition",
+                        from: "entrada",
+                        to: "taller"
+                    }
+                ]
+            },
+            {
+                id: "prod-3",
+                receiptCode: "0002",
+                product: "Oasis Sankey - Dispensador Frío/Caliente",
+                articleType: "Oasis",
+                brand: "Sankey",
+                model: "Dispensador Frío/Caliente",
+                accessories: ["Filtro"],
+                serial: "PAN-881204-X",
+                client: "Roberto Gómez",
+                phone: "8857-6545",
+                store: "Plaza Panamá",
+                desc: "Fuga de agua en el grifo de agua fría.",
+                priority: "Baja",
+                status: "entrada",
+                workshop: null,
+                workshopOrderNumber: null,
+                repairDetails: null,
+                createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+                enteredTallerAt: null,
+                lastInquiryAt: null,
+                history: [
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
+                        text: "Producto ingresado en Plaza Panamá con Filtro.",
+                        type: "create",
+                        from: null,
+                        to: "entrada"
+                    }
+                ]
+            },
+            {
+                id: "prod-4",
+                receiptCode: "0003",
+                product: "Ventilador Westinghouse - Industrial 18''",
+                articleType: "Ventilador",
+                brand: "Westinghouse",
+                model: "Industrial 18''",
+                accessories: ["Completo"],
+                serial: "PNO-992145-K",
+                client: "Elena Mejía",
+                phone: "9876-1234",
+                store: "Panorama Int.",
+                desc: "Hace ruido metálico al oscilar a alta velocidad.",
+                priority: "Media",
+                status: "retornado",
+                workshop: "SERVITECA",
+                workshopOrderNumber: "ORD-2026-1102",
+                repairDetails: "Se realizó cambio de rodamiento y lubricación completa del motor.",
+                createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                enteredTallerAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                lastInquiryAt: null,
+                history: [
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
+                        text: "Ingreso en Panorama Int.",
+                        type: "create",
+                        from: null,
+                        to: "entrada"
+                    },
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+                        text: "Remitido a SERVITECA.",
+                        type: "transition",
+                        from: "entrada",
+                        to: "taller"
+                    },
+                    {
+                        timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
+                        text: "Retornado de SERVITECA con Orden ORD-2026-1102.",
+                        type: "transition",
+                        from: "taller",
+                        to: "retornado"
+                    }
+                ]
+            }
+        ];
+
+        // Estado del Gestor
+        let pendingTransition = null; 
+        let currentViewingProductId = null;
+        let pendingDeleteId = null;
+        let pendingInquiryProductId = null;
+
+        window.onload = function() {
+            let savedProducts = localStorage.getItem('grupo_yousef_products');
+            if (savedProducts) {
+                try {
+                    products = JSON.parse(savedProducts);
+                } catch (e) {
+                    console.error("Error al leer localStorage, cargando datos por defecto.", e);
+                }
+            }
+
+            // Validar si existe sesión iniciada
+            const storedUser = localStorage.getItem('grupo_yousef_current_user');
+            if (storedUser) {
+                try {
+                    currentUser = JSON.parse(storedUser);
+                } catch (e) {
+                    currentUser = null;
+                }
+            }
+
+            if (!currentUser) {
+                showLoginModal();
+            } else {
+                hideLoginModal();
+                initApp();
+            }
+        }
+
+        function showLoginModal() {
+            const modal = document.getElementById('modalLogin');
+            if (modal) modal.classList.remove('hidden');
+            document.getElementById('loginErrorMsg').classList.add('hidden');
+        }
+
+        function hideLoginModal() {
+            const modal = document.getElementById('modalLogin');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function handleLoginSubmit(event) {
+            event.preventDefault();
+            const userVal = document.getElementById('loginUsername').value.trim();
+            const passVal = document.getElementById('loginPassword').value.trim();
+
+            const found = SYSTEM_USERS.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
+
+            if (found) {
+                currentUser = found;
+                localStorage.setItem('grupo_yousef_current_user', JSON.stringify(currentUser));
+                hideLoginModal();
+                initApp();
+            } else {
+                const errText = document.getElementById('loginErrorText');
+                errText.innerText = "Usuario o contraseña incorrectos.";
+                document.getElementById('loginErrorMsg').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('grupo_yousef_current_user');
+            showLoginModal();
+        }
+
+        function initApp() {
+            // Actualizar etiquetas en el Navbar
+            document.getElementById('navUserName').innerText = currentUser.name;
+            document.getElementById('navUserRole').innerText = currentUser.role;
+
+            const activeBadge = document.getElementById('activeStoreBadge');
+            if (currentUser.username === 'admin') {
+                activeBadge.innerText = "Todas las Tiendas (Admin)";
+                activeBadge.className = "text-xs px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full font-bold";
+            } else {
+                activeBadge.innerText = currentUser.allowedStores.join(" & ");
+                activeBadge.className = "text-xs px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-full font-bold";
+            }
+
+            // Asegurar que todos los productos almacenados tengan un comprobante numérico de 4 dígitos
+            let currentSeq = 0;
+            products.forEach(p => {
+                if (!p.receiptCode) {
+                    p.receiptCode = String(currentSeq).padStart(4, '0');
+                    currentSeq++;
+                } else {
+                    const num = parseInt(p.receiptCode, 10);
+                    if (!isNaN(num) && num >= currentSeq) {
+                        currentSeq = num + 1;
+                    }
+                }
+            });
+
+            saveToStorage();
+            buildStoreRadioButtons();
+            renderBoard();
+            handleArticleTypeChange();
+            lucide.createIcons();
+        }
+
+        // Construir dinámicamente las opciones de tiendas en la creación de productos según los permisos
+        function buildStoreRadioButtons() {
+            const container = document.getElementById('storeRadioGroup');
+            container.innerHTML = '';
+
+            const allowed = currentUser ? currentUser.allowedStores : Object.keys(STORES_INFO);
+
+            allowed.forEach((storeName, index) => {
+                const label = document.createElement('label');
+                label.className = "cursor-pointer";
+
+                const isChecked = index === 0 ? "checked" : "";
+
+                label.innerHTML = `
+                    <input type="radio" name="store" value="${storeName}" ${isChecked} onchange="updateSelectedStoreInfo()" class="peer hidden">
+                    <div class="border border-slate-200 rounded-lg py-2.5 px-2 text-center text-xs font-bold text-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 hover:bg-slate-50 transition-all shadow-sm">
+                        ${storeName}
+                    </div>
+                `;
+                container.appendChild(label);
+            });
+
+            updateSelectedStoreInfo();
+        }
+
+        // Actualiza dinámicamente la tarjeta de información al cambiar la tienda seleccionada
+        function updateSelectedStoreInfo() {
+            const selectedStoreRadio = document.querySelector('input[name="store"]:checked');
+            const storeName = selectedStoreRadio ? selectedStoreRadio.value : (currentUser ? currentUser.allowedStores[0] : "Dos Hermanos");
+            const info = STORES_INFO[storeName] || STORES_INFO["Dos Hermanos"];
+
+            const nameEl = document.getElementById('previewStoreName');
+            const addrEl = document.getElementById('previewStoreAddress');
+            const phoneEl = document.getElementById('previewStorePhone');
+            const emailEl = document.getElementById('previewStoreEmail');
+
+            if (nameEl) nameEl.innerText = storeName;
+            if (addrEl) addrEl.innerText = info.address;
+            if (phoneEl) phoneEl.innerText = info.phone;
+            if (emailEl) emailEl.innerText = info.email;
+
+            lucide.createIcons();
+        }
+
+        function getNextReceiptCode() {
+            let maxNum = -1;
+            products.forEach(p => {
+                if (p.receiptCode !== undefined && p.receiptCode !== null) {
+                    const num = parseInt(p.receiptCode, 10);
+                    if (!isNaN(num) && num > maxNum) {
+                        maxNum = num;
+                    }
+                }
+            });
+            const nextNum = maxNum + 1;
+            return String(nextNum).padStart(4, '0');
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('grupo_yousef_products', JSON.stringify(products));
+        }
+
+        function handleArticleTypeChange() {
+            const articleTypeSelect = document.getElementById('prodArticleType');
+            const articleCustomInput = document.getElementById('prodArticleTypeCustom');
+            const brandSelect = document.getElementById('prodBrand');
+            const brandCustomInput = document.getElementById('prodBrandCustom');
+            const accContainer = document.getElementById('accessoriesContainer');
+            const accessoryCustomInput = document.getElementById('prodAccessoryCustom');
+
+            if (articleTypeSelect.value === 'Otro') {
+                articleCustomInput.classList.remove('hidden');
+                articleCustomInput.required = true;
+            } else {
+                articleCustomInput.classList.add('hidden');
+                articleCustomInput.required = false;
+                articleCustomInput.value = '';
+            }
+
+            brandCustomInput.classList.add('hidden');
+            brandCustomInput.required = false;
+            brandCustomInput.value = '';
+
+            accessoryCustomInput.classList.add('hidden');
+            accessoryCustomInput.value = '';
+
+            brandSelect.innerHTML = '';
+            const config = ARTICLE_CONFIG[articleTypeSelect.value] || ARTICLE_CONFIG['Otro'];
+            
+            config.brands.forEach(brand => {
+                const opt = document.createElement('option');
+                opt.value = brand;
+                opt.innerText = brand;
+                brandSelect.appendChild(opt);
+            });
+
+            handleBrandChange();
+
+            accContainer.innerHTML = '';
+            config.accessories.forEach(acc => {
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-slate-200 hover:bg-indigo-50/40 transition-colors shadow-sm select-none";
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = "checkbox";
+                checkbox.name = "prodAccessories";
+                checkbox.value = acc;
+                checkbox.className = "rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4";
+
+                if (acc === 'Otro') {
+                    checkbox.onchange = function() {
+                        if (this.checked) {
+                            accessoryCustomInput.classList.remove('hidden');
+                            accessoryCustomInput.focus();
+                        } else {
+                            accessoryCustomInput.classList.add('hidden');
+                            accessoryCustomInput.value = '';
+                        }
+                    };
+                }
+
+                const span = document.createElement('span');
+                span.className = "text-xs text-slate-700 font-semibold";
+                span.innerText = acc;
+
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                accContainer.appendChild(label);
+            });
+        }
+
+        function handleBrandChange() {
+            const brandSelect = document.getElementById('prodBrand');
+            const brandCustomInput = document.getElementById('prodBrandCustom');
+
+            if (brandSelect && brandSelect.value === 'Otro') {
+                brandCustomInput.classList.remove('hidden');
+                brandCustomInput.required = true;
+            } else if (brandCustomInput) {
+                brandCustomInput.classList.add('hidden');
+                brandCustomInput.required = false;
+                brandCustomInput.value = '';
+            }
+        }
+
+        function getDaysSinceActivityInWorkshop(prod) {
+            if (prod.status !== 'taller') return 0;
+            const startRef = prod.lastInquiryAt ? prod.lastInquiryAt : prod.enteredTallerAt;
+            if (!startRef) return 0;
+
+            const diffTime = Date.now() - new Date(startRef).getTime();
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function filterProducts() {
+            renderBoard();
+        }
+
+        // Renderizar el Tablero Kanban y Estadísticas Filtradas según Permisos de Tienda
+        function renderBoard() {
+            const colEntrada = document.getElementById('col-entrada');
+            const colTaller = document.getElementById('col-taller');
+            const colRetornado = document.getElementById('col-retornado');
+            const colEntregado = document.getElementById('col-entregado');
+
+            colEntrada.innerHTML = '';
+            colTaller.innerHTML = '';
+            colRetornado.innerHTML = '';
+            colEntregado.innerHTML = '';
+
+            let countEnt = 0, countTal = 0, countRet = 0, countEntregadoActivos = 0;
+            let countFollowUpAlerts = 0;
+            let totalAllowedProducts = 0;
+
+            const searchQuery = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
+
+            products.forEach(prod => {
+                // FILTRADO POR PERMISOS DE TIENDA
+                if (currentUser && !currentUser.allowedStores.includes(prod.store)) {
+                    return; // No pertenece a las tiendas permitidas del usuario logueado
+                }
+
+                totalAllowedProducts++;
+
+                if (prod.status === 'taller') {
+                    const days = getDaysSinceActivityInWorkshop(prod);
+                    if (days >= 5) {
+                        countFollowUpAlerts++;
+                    }
+                }
+
+                const card = createProductCard(prod);
+                
+                const matchesSearch = searchQuery === '' || 
+                    prod.product.toLowerCase().includes(searchQuery) || 
+                    (prod.receiptCode && prod.receiptCode.toLowerCase().includes(searchQuery)) ||
+                    (prod.workshopOrderNumber && prod.workshopOrderNumber.toLowerCase().includes(searchQuery)) ||
+                    (prod.repairDetails && prod.repairDetails.toLowerCase().includes(searchQuery)) ||
+                    prod.serial.toLowerCase().includes(searchQuery) || 
+                    prod.client.toLowerCase().includes(searchQuery) ||
+                    (prod.phone && prod.phone.toLowerCase().includes(searchQuery)) ||
+                    (prod.store && prod.store.toLowerCase().includes(searchQuery)) ||
+                    prod.desc.toLowerCase().includes(searchQuery);
+
+                if (prod.status === 'entrada') {
+                    if (matchesSearch) {
+                        colEntrada.appendChild(card);
+                        countEnt++;
+                    }
+                } else if (prod.status === 'taller') {
+                    if (matchesSearch) {
+                        colTaller.appendChild(card);
+                        countTal++;
+                    }
+                } else if (prod.status === 'retornado') {
+                    if (matchesSearch) {
+                        colRetornado.appendChild(card);
+                        countRet++;
+                    }
+                } else if (prod.status === 'entregado') {
+                    const timeElapsed = prod.deliveredAt ? (Date.now() - new Date(prod.deliveredAt).getTime()) : 0;
+                    const isArchived = timeElapsed > ARCHIVE_TIMEOUT_MS;
+
+                    if (searchQuery !== '') {
+                        if (matchesSearch) {
+                            colEntregado.appendChild(card);
+                            countEntregadoActivos++;
+                        }
+                    } else {
+                        if (!isArchived) {
+                            colEntregado.appendChild(card);
+                            countEntregadoActivos++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('countEntrada').innerText = countEnt;
+            document.getElementById('countTaller').innerText = countTal;
+            document.getElementById('countRetornado').innerText = countRet;
+            document.getElementById('countEntregado').innerText = countEntregadoActivos;
+
+            document.getElementById('statTotal').innerText = totalAllowedProducts;
+            document.getElementById('statEntrada').innerText = countEnt;
+            document.getElementById('statTaller').innerText = countTal;
+            document.getElementById('statRetornado').innerText = countRet;
+            document.getElementById('statEntregado').innerText = countEntregadoActivos;
+
+            const followUpBanner = document.getElementById('followUpAlertBanner');
+            const pendingBadge = document.getElementById('pendingAlertsBadge');
+            if (countFollowUpAlerts > 0) {
+                followUpBanner.classList.remove('hidden');
+                pendingBadge.innerText = `${countFollowUpAlerts} equipo(s) con alerta`;
+            } else {
+                followUpBanner.classList.add('hidden');
+            }
+
+            // Si el modal de historial total está abierto, re-renderizarlo
+            const modalHistory = document.getElementById('modalFullHistory');
+            if (modalHistory && !modalHistory.classList.contains('hidden')) {
+                renderHistoryTable();
+            }
+
+            lucide.createIcons();
+        }
+
+        // FUNCIONALIDAD DEL HISTORIAL TOTAL EN MODAL CON FILTRADO POR TIENDA
+        function openHistoryModal() {
+            document.getElementById('historySearchInput').value = '';
+            document.getElementById('historyStatusFilter').value = 'ALL';
+            renderHistoryTable();
+            document.getElementById('modalFullHistory').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('modalFullHistory').classList.add('hidden');
+        }
+
+        function renderHistoryTable() {
+            const tableBody = document.getElementById('historyTableBody');
+            const emptyState = document.getElementById('historyEmptyState');
+            const counterBadge = document.getElementById('modalHistoryCounter');
+            
+            const query = document.getElementById('historySearchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('historyStatusFilter').value;
+
+            tableBody.innerHTML = '';
+
+            const filteredProducts = products.filter(prod => {
+                // FILTRAR POR PERMISOS DE TIENDA
+                if (currentUser && !currentUser.allowedStores.includes(prod.store)) {
+                    return false;
+                }
+
+                const matchesStatus = (statusFilter === 'ALL') || (prod.status === statusFilter);
+                
+                const matchesQuery = query === '' ||
+                    prod.product.toLowerCase().includes(query) ||
+                    (prod.receiptCode && prod.receiptCode.toLowerCase().includes(query)) ||
+                    (prod.workshopOrderNumber && prod.workshopOrderNumber.toLowerCase().includes(query)) ||
+                    (prod.repairDetails && prod.repairDetails.toLowerCase().includes(query)) ||
+                    prod.serial.toLowerCase().includes(query) ||
+                    prod.client.toLowerCase().includes(query) ||
+                    (prod.phone && prod.phone.toLowerCase().includes(query)) ||
+                    (prod.store && prod.store.toLowerCase().includes(query)) ||
+                    (prod.workshop && prod.workshop.toLowerCase().includes(query)) ||
+                    prod.desc.toLowerCase().includes(query);
+
+                return matchesStatus && matchesQuery;
+            });
+
+            const totalUserScopeProducts = products.filter(p => !currentUser || currentUser.allowedStores.includes(p.store)).length;
+
+            counterBadge.innerText = `${filteredProducts.length} de ${totalUserScopeProducts} Registros`;
+
+            if (filteredProducts.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Ordenar por fecha de creación (más recientes primero)
+            filteredProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            filteredProducts.forEach(prod => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-indigo-50/30 transition-colors";
+
+                let statusBadge = '';
+                if (prod.status === 'entrada') {
+                    statusBadge = `<span class="px-2.5 py-1 bg-sky-100 text-sky-800 rounded-full text-[10px] font-bold border border-sky-200 inline-flex items-center gap-1"><i data-lucide="clipboard-list" class="w-3 h-3"></i> 1. Entrada</span>`;
+                } else if (prod.status === 'taller') {
+                    const wsInfo = prod.workshop ? ` (${prod.workshop})` : '';
+                    statusBadge = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-200 inline-flex items-center gap-1"><i data-lucide="wrench" class="w-3 h-3"></i> 2. En Taller${wsInfo}</span>`;
+                } else if (prod.status === 'retornado') {
+                    statusBadge = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold border border-emerald-200 inline-flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> 3. Retornado</span>`;
+                } else if (prod.status === 'entregado') {
+                    statusBadge = `<span class="px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-full text-[10px] font-bold border border-indigo-200 inline-flex items-center gap-1"><i data-lucide="user-check" class="w-3 h-3"></i> 4. Entregado</span>`;
+                }
+
+                const createdDate = new Date(prod.createdAt);
+                const formattedDate = createdDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                const orderTag = prod.workshopOrderNumber 
+                    ? `<div class="text-[10px] font-mono text-emerald-700 font-bold mt-1">Ord. Taller: #${prod.workshopOrderNumber}</div>` 
+                    : '';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono font-extrabold text-indigo-700">
+                        N° ${prod.receiptCode || '0000'}
+                    </td>
+                    <td class="py-3 px-4 text-slate-500 font-medium whitespace-nowrap">
+                        ${formattedDate}
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-slate-800 leading-tight">${prod.product}</div>
+                        <div class="text-[10px] font-mono text-slate-400">S/N: ${prod.serial}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="font-semibold text-slate-700">${prod.client}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">${prod.phone || 'Sin Tel.'}</div>
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-slate-600">
+                        <span class="inline-flex items-center gap-1"><i data-lucide="store" class="w-3 h-3 text-indigo-500"></i> ${prod.store || 'Dos Hermanos'}</span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        ${statusBadge}
+                        ${orderTag}
+                    </td>
+                    <td class="py-3 px-4 text-right whitespace-nowrap">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button onclick="openDetailsModal('${prod.id}')" title="Ver Bitácora Detallada" class="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition-all">
+                                <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="openReceiptModal('${prod.id}')" title="Imprimir Comprobante" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition-all">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        function createProductCard(prod) {
+            const card = document.createElement('div');
+            card.id = prod.id;
+            card.draggable = true;
+            card.ondragstart = (e) => handleDragStart(e, prod.id);
+            card.className = "bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative flex flex-col gap-3";
+            
+            let priorityClass = "bg-slate-100 text-slate-700 border-slate-200";
+            if (prod.priority === 'Alta') priorityClass = "bg-rose-50 text-rose-700 border-rose-100";
+            else if (prod.priority === 'Media') priorityClass = "bg-amber-50 text-amber-700 border-amber-100";
+            else if (prod.priority === 'Baja') priorityClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
+
+            let workshopBadge = '';
+            if (prod.status === 'taller' && prod.workshop) {
+                let wsColor = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                if (prod.workshop === 'LATIN') wsColor = "bg-blue-50 text-blue-700 border-blue-200";
+                else if (prod.workshop === 'SERVITECA') wsColor = "bg-purple-50 text-purple-700 border-purple-200";
+                else if (prod.workshop === 'INTERNO') wsColor = "bg-teal-50 text-teal-700 border-teal-200";
+                
+                workshopBadge = `<span class="text-[10px] px-2 py-0.5 border rounded-md font-bold tracking-wider uppercase ${wsColor}">Taller: ${prod.workshop}</span>`;
+            }
+
+            let followUpAlertBadge = '';
+            let followUpBtn = '';
+            if (prod.status === 'taller') {
+                const daysInWorkshop = getDaysSinceActivityInWorkshop(prod);
+                if (daysInWorkshop >= 5) {
+                    followUpAlertBadge = `
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wide animate-pulse shadow-sm">
+                            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                            <span>⚠️ SEGUIMIENTO: ${daysInWorkshop} DÍAS SIN CAMBIOS</span>
+                        </div>
+                    `;
+                    followUpBtn = `
+                        <button onclick="event.stopPropagation(); openInquiryModal('${prod.id}')" class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all shadow-md w-full mt-2">
+                            <i data-lucide="phone-call" class="w-3.5 h-3.5"></i>
+                            <span>Registrar Gestión</span>
+                        </button>
+                    `;
+                } else if (daysInWorkshop > 0) {
+                    followUpAlertBadge = `
+                        <div class="text-[9px] text-slate-500 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100 self-start">
+                            ${daysInWorkshop} días en reparación
+                        </div>
+                    `;
+                } else {
+                    followUpAlertBadge = `
+                        <div class="text-[9px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 self-start">
+                            Ingresó hoy a taller
+                        </div>
+                    `;
+                }
+            }
+
+            let archiveIndicator = '';
+            if (prod.status === 'entregado') {
+                const timeElapsed = prod.deliveredAt ? (Date.now() - new Date(prod.deliveredAt).getTime()) : 0;
+                if (timeElapsed > ARCHIVE_TIMEOUT_MS) {
+                    archiveIndicator = `<span class="text-[10px] px-2 py-0.5 border rounded-md font-bold bg-slate-100 text-slate-500 border-slate-200 uppercase tracking-wide flex items-center gap-1"><i data-lucide="archive" class="w-3 h-3"></i> Archivado</span>`;
+                } else {
+                    archiveIndicator = `<span class="text-[10px] px-2 py-0.5 border rounded-md font-bold bg-indigo-50 text-indigo-600 border-indigo-200 uppercase tracking-wide flex items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i> Reciente</span>`;
+                }
+            }
+
+            let flowButtons = '';
+            if (prod.status === 'entrada') {
+                flowButtons = `
+                    <button onclick="event.stopPropagation(); startTransition('${prod.id}', 'taller')" class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-700 text-xs font-semibold rounded-lg transition-colors border border-amber-200 w-full justify-center">
+                        <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+                        <span>Mandar a Taller</span>
+                    </button>
+                `;
+            } else if (prod.status === 'taller') {
+                flowButtons = `
+                    <button onclick="event.stopPropagation(); startTransition('${prod.id}', 'entrada')" class="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors border border-slate-200">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                        <span>Regresar</span>
+                    </button>
+                    <button onclick="event.stopPropagation(); startTransition('${prod.id}', 'retornado')" class="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow-sm transition-all ml-auto">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                        <span>Retornar de Taller</span>
+                    </button>
+                `;
+            } else if (prod.status === 'retornado') {
+                flowButtons = `
+                    <button onclick="event.stopPropagation(); startTransition('${prod.id}', 'taller')" class="flex items-center gap-1 px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-lg transition-colors border border-amber-200">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Reingresar a Taller</span>
+                    </button>
+                    <button onclick="event.stopPropagation(); startTransition('${prod.id}', 'entregado')" class="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all ml-auto">
+                        <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                        <span>Entregar a Cliente</span>
+                    </button>
+                `;
+            } else if (prod.status === 'entregado') {
+                flowButtons = `
+                    <button onclick="event.stopPropagation(); openReceiptModal('${prod.id}')" class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all w-full">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                        <span>Reimprimir Comprobante</span>
+                    </button>
+                `;
+            }
+
+            const orderInfoTag = prod.workshopOrderNumber 
+                ? `<div class="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 self-start">N° Orden: ${prod.workshopOrderNumber}</div>` 
+                : '';
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                    <span class="text-xs px-2 py-0.5 border rounded-md font-bold uppercase tracking-wider ${priorityClass}">${prod.priority}</span>
+                    <div class="flex items-center gap-1">
+                        ${workshopBadge}
+                        ${archiveIndicator}
+                        <button onclick="event.stopPropagation(); openDeleteModal('${prod.id}')" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-all" title="Eliminar equipo">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                ${followUpAlertBadge}
+
+                <div onclick="openDetailsModal('${prod.id}')" class="cursor-pointer space-y-1">
+                    <div class="flex items-center justify-between gap-1">
+                        <h3 class="font-bold text-slate-900 text-sm leading-snug group-hover:text-indigo-600 transition-colors">${prod.product}</h3>
+                        <span class="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded shrink-0">N° ${prod.receiptCode || '0000'}</span>
+                    </div>
+                    ${orderInfoTag}
+                    <p class="text-[11px] text-slate-400 font-mono">S/N: ${prod.serial}</p>
+                    <p class="text-xs text-slate-600 line-clamp-2 mt-1 leading-relaxed">${prod.desc}</p>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="font-medium text-slate-700 flex items-center gap-1"><i data-lucide="user" class="w-3 h-3 text-slate-400"></i> ${prod.client}</span>
+                        <span class="font-mono text-slate-500 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3 text-slate-400"></i> ${prod.phone || '--'}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span class="flex items-center gap-1 font-semibold text-indigo-600"><i data-lucide="store" class="w-3 h-3 text-indigo-400"></i> ${prod.store || 'Dos Hermanos'}</span>
+                    </div>
+                </div>
+
+                ${followUpBtn}
+
+                <div class="pt-1 flex items-center gap-2">
+                    ${flowButtons}
+                </div>
+            `;
+
+            return card;
+        }
+
+        // --- ARRASTRE Y SOLTADO (DRAG & DROP) ---
+        function handleDragStart(e, prodId) {
+            e.dataTransfer.setData('text/plain', prodId);
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e, targetStatus) {
+            e.preventDefault();
+            const prodId = e.dataTransfer.getData('text/plain');
+            const prod = products.find(p => p.id === prodId);
+            if (prod && prod.status !== targetStatus) {
+                startTransition(prodId, targetStatus);
+            }
+        }
+
+        // --- MANEJO DE REGISTRO DE NUEVO PRODUCTO ---
+        function openNewProductModal() {
+            buildStoreRadioButtons();
+            document.getElementById('modalNewProduct').classList.remove('hidden');
+        }
+
+        function closeNewProductModal() {
+            document.getElementById('modalNewProduct').classList.add('hidden');
+            document.getElementById('productForm').reset();
+            handleArticleTypeChange();
+        }
+
+        function saveProduct(e) {
+            e.preventDefault();
+            
+            const selectedStoreRadio = document.querySelector('input[name="store"]:checked');
+            const storeVal = selectedStoreRadio ? selectedStoreRadio.value : (currentUser ? currentUser.allowedStores[0] : "Dos Hermanos");
+
+            let articleTypeVal = document.getElementById('prodArticleType').value;
+            if (articleTypeVal === 'Otro') {
+                articleTypeVal = document.getElementById('prodArticleTypeCustom').value.trim() || 'Otro';
+            }
+
+            let brandVal = document.getElementById('prodBrand').value;
+            if (brandVal === 'Otro') {
+                brandVal = document.getElementById('prodBrandCustom').value.trim() || 'Otra Marca';
+            }
+
+            const modelVal = document.getElementById('prodModel').value.trim();
+            const fullTitle = `${articleTypeVal} ${brandVal} - ${modelVal}`;
+
+            // Capturar Accesorios seleccionados
+            const accCheckboxes = document.querySelectorAll('input[name="prodAccessories"]:checked');
+            let selectedAccessories = [];
+            accCheckboxes.forEach(cb => {
+                if (cb.value === 'Otro') {
+                    const customAcc = document.getElementById('prodAccessoryCustom').value.trim();
+                    if (customAcc) selectedAccessories.push(customAcc);
+                } else {
+                    selectedAccessories.push(cb.value);
+                }
+            });
+
+            if (selectedAccessories.length === 0) {
+                selectedAccessories = ["Solo equipo principal"];
+            }
+
+            const receiptCode = getNextReceiptCode();
+
+            const newProd = {
+                id: 'prod-' + Date.now(),
+                receiptCode: receiptCode,
+                product: fullTitle,
+                articleType: articleTypeVal,
+                brand: brandVal,
+                model: modelVal,
+                accessories: selectedAccessories,
+                serial: document.getElementById('prodSerial').value.trim(),
+                client: document.getElementById('prodClient').value.trim(),
+                phone: document.getElementById('prodPhone').value.trim(),
+                store: storeVal,
+                desc: document.getElementById('prodDesc').value.trim(),
+                priority: document.querySelector('input[name="priority"]:checked').value,
+                status: 'entrada',
+                workshop: null,
+                workshopOrderNumber: null,
+                repairDetails: null,
+                createdAt: new Date().toISOString(),
+                enteredTallerAt: null,
+                lastInquiryAt: null,
+                history: [
+                    {
+                        timestamp: new Date().toISOString(),
+                        text: `Producto ingresado en tienda ${storeVal}. Accesorios: ${selectedAccessories.join(', ')}.`,
+                        type: "create",
+                        from: null,
+                        to: "entrada"
+                    }
+                ]
+            };
+
+            products.unshift(newProd);
+            saveToStorage();
+            closeNewProductModal();
+            renderBoard();
+
+            openReceiptModal(newProd.id);
+        }
+
+        // --- TRANSICIONES Y MODAL DE CAMBIO DE ESTADO ---
+        function startTransition(prodId, newStatus) {
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            pendingTransition = { prodId, newStatus };
+            
+            const notice = document.getElementById('transitionNotice');
+            const quickBox = document.getElementById('quickComments');
+            const workshopBlock = document.getElementById('workshopSelectBlock');
+            const returnBlock = document.getElementById('workshopReturnBlock');
+            const errBlock = document.getElementById('transitionErrorMsg');
+
+            document.getElementById('transitionComment').value = '';
+            document.getElementById('transitionWorkshopOrder').value = prod.workshopOrderNumber || '';
+            document.getElementById('transitionRepairDetails').value = prod.repairDetails || '';
+            
+            errBlock.classList.add('hidden');
+            workshopBlock.classList.add('hidden');
+            returnBlock.classList.add('hidden');
+            quickBox.innerHTML = '';
+
+            let statusNames = {
+                'entrada': '1. Entrada / Recepción',
+                'taller': '2. En Taller',
+                'retornado': '3. Retornado de Taller (Listo p/ Entrega)',
+                'entregado': '4. Entregado a Cliente'
+            };
+
+            notice.innerText = `Cambiando de [${statusNames[prod.status]}] a [${statusNames[newStatus]}].`;
+
+            if (newStatus === 'taller') {
+                workshopBlock.classList.remove('hidden');
+            } else if (newStatus === 'retornado') {
+                returnBlock.classList.remove('hidden');
+            }
+
+            const options = {
+                'taller': ['Se envía a taller técnico para diagnóstico.', 'Ingresa a reparación prioritaria.', 'En espera de revisión técnica.'],
+                'retornado': ['Equipo reparado exitosamente.', 'Pruebas finalizadas con éxito.', 'Sin reparación por costo/repuesto.'],
+                'entregado': ['Cliente retira en tienda conforme.', 'Entregado a familiar autorizado.', 'Pruebas realizadas ante el cliente.'],
+                'entrada': ['Regresado a recepción para verificación.', 'A la espera de autorización.']
+            };
+
+            (options[newStatus] || []).forEach(text => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = "text-[10px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-2 py-1 rounded border border-slate-200 transition-colors";
+                btn.innerText = text;
+                btn.onclick = () => document.getElementById('transitionComment').value = text;
+                quickBox.appendChild(btn);
+            });
+
+            document.getElementById('modalTransition').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function cancelTransition() {
+            pendingTransition = null;
+            document.getElementById('modalTransition').classList.add('hidden');
+        }
+
+        function applyQuickRepair(text) {
+            document.getElementById('transitionRepairDetails').value = text;
+        }
+
+        function confirmTransition() {
+            if (!pendingTransition) return;
+
+            const { prodId, newStatus } = pendingTransition;
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            const comment = document.getElementById('transitionComment').value.trim();
+            const errBlock = document.getElementById('transitionErrorMsg');
+
+            let selectedWorkshop = null;
+            let orderNumber = null;
+            let repairDetails = null;
+
+            if (newStatus === 'taller') {
+                selectedWorkshop = document.getElementById('transitionWorkshop').value;
+            } else if (newStatus === 'retornado') {
+                orderNumber = document.getElementById('transitionWorkshopOrder').value.trim();
+                repairDetails = document.getElementById('transitionRepairDetails').value.trim();
+
+                if (!orderNumber || !repairDetails) {
+                    errBlock.classList.remove('hidden');
+                    return;
+                }
+            }
+
+            const prevStatus = prod.status;
+            prod.status = newStatus;
+
+            if (newStatus === 'taller') {
+                prod.workshop = selectedWorkshop;
+                prod.enteredTallerAt = new Date().toISOString();
+                prod.lastInquiryAt = null;
+            } else if (newStatus === 'retornado') {
+                prod.workshopOrderNumber = orderNumber;
+                prod.repairDetails = repairDetails;
+            } else if (newStatus === 'entregado') {
+                prod.deliveredAt = new Date().toISOString();
+            }
+
+            let transitionText = `Estado cambiado a ${newStatus.toUpperCase()}`;
+            if (newStatus === 'taller') transitionText += ` (Taller: ${selectedWorkshop})`;
+            if (newStatus === 'retornado') transitionText += ` (N° Orden: ${orderNumber})`;
+            if (comment) transitionText += ` - Nota: ${comment}`;
+
+            prod.history.unshift({
+                timestamp: new Date().toISOString(),
+                text: transitionText,
+                type: "transition",
+                from: prevStatus,
+                to: newStatus
+            });
+
+            saveToStorage();
+            document.getElementById('modalTransition').classList.add('hidden');
+            pendingTransition = null;
+            renderBoard();
+        }
+
+        // --- GESTIÓN DE CONSULTAS (REINICIO DE ALERTA DE 5 DÍAS) ---
+        function openInquiryModal(prodId) {
+            pendingInquiryProductId = prodId;
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            const days = getDaysSinceActivityInWorkshop(prod);
+            document.getElementById('inquiryProductText').innerHTML = `
+                El equipo <strong>${prod.product}</strong> tiene <strong>${days} días</strong> en el taller <strong>${prod.workshop || 'Taller'}</strong>.
+                Registra la gestión realizada para reiniciar el contador.
+            `;
+            document.getElementById('inquiryComment').value = '';
+            document.getElementById('inquiryErrorMsg').classList.add('hidden');
+            document.getElementById('modalInquiry').classList.remove('hidden');
+        }
+
+        function closeInquiryModal() {
+            pendingInquiryProductId = null;
+            document.getElementById('modalInquiry').classList.add('hidden');
+        }
+
+        function applyQuickInquiry(text) {
+            document.getElementById('inquiryComment').value = text;
+        }
+
+        function saveInquiryManagement() {
+            if (!pendingInquiryProductId) return;
+
+            const note = document.getElementById('inquiryComment').value.trim();
+            const errEl = document.getElementById('inquiryErrorMsg');
+
+            if (!note) {
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            const prod = products.find(p => p.id === pendingInquiryProductId);
+            if (!prod) return;
+
+            prod.lastInquiryAt = new Date().toISOString();
+            prod.history.unshift({
+                timestamp: new Date().toISOString(),
+                text: `GESTIÓN DE SEGUIMIENTO (Taller ${prod.workshop}): ${note}`,
+                type: "inquiry",
+                from: prod.status,
+                to: prod.status
+            });
+
+            saveToStorage();
+            closeInquiryModal();
+            renderBoard();
+        }
+
+        // --- MODAL DE DETALLES Y BITÁCORA ---
+        function openDetailsModal(prodId) {
+            currentViewingProductId = prodId;
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            document.getElementById('detailTitle').innerText = prod.product;
+            document.getElementById('detailArticleType').innerText = prod.articleType || 'N/A';
+            document.getElementById('detailBrand').innerText = prod.brand || 'N/A';
+            document.getElementById('detailStore').innerText = prod.store || 'Dos Hermanos';
+            document.getElementById('detailSerial').innerText = prod.serial;
+            document.getElementById('detailClient').innerText = prod.client;
+            document.getElementById('detailPhone').innerText = prod.phone || 'Sin teléfono';
+            document.getElementById('detailDesc').innerText = prod.desc;
+
+            // Renderizar insignias
+            const statusEl = document.getElementById('detailStatus');
+            statusEl.innerText = prod.status.toUpperCase();
+            if (prod.status === 'entrada') statusEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-sky-100 text-sky-800 border border-sky-200";
+            else if (prod.status === 'taller') statusEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200";
+            else if (prod.status === 'retornado') statusEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+            else if (prod.status === 'entregado') statusEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200";
+
+            const prioEl = document.getElementById('detailPriority');
+            prioEl.innerText = "Prioridad: " + prod.priority;
+            if (prod.priority === 'Alta') prioEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 border border-rose-200";
+            else if (prod.priority === 'Media') prioEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200";
+            else prioEl.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+
+            const wsBadge = document.getElementById('detailWorkshopBadge');
+            if (prod.workshop) {
+                wsBadge.innerText = "Taller: " + prod.workshop;
+                wsBadge.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-800 border border-purple-200 inline-block";
+                wsBadge.classList.remove('hidden');
+            } else {
+                wsBadge.classList.add('hidden');
+            }
+
+            // Tarjeta de Reparación de Taller en Detalles
+            const repairBox = document.getElementById('detailWorkshopRepairBox');
+            if (prod.repairDetails && prod.workshopOrderNumber) {
+                document.getElementById('detailWorkshopOrderTag').innerText = "Orden N° " + prod.workshopOrderNumber;
+                document.getElementById('detailWorkshopRepairText').innerText = prod.repairDetails;
+                repairBox.classList.remove('hidden');
+            } else {
+                repairBox.classList.add('hidden');
+            }
+
+            // Renderizar accesorios
+            const accEl = document.getElementById('detailAccessories');
+            accEl.innerHTML = '';
+            if (prod.accessories && prod.accessories.length > 0) {
+                prod.accessories.forEach(acc => {
+                    const tag = document.createElement('span');
+                    tag.className = "text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-md text-slate-700 shadow-2xs";
+                    tag.innerText = acc;
+                    accEl.appendChild(tag);
+                });
+            } else {
+                accEl.innerHTML = '<span class="text-xs text-slate-400 italic">Sin accesorios registrados</span>';
+            }
+
+            // Timeline / Bitácora
+            const timeline = document.getElementById('detailTimeline');
+            timeline.innerHTML = '';
+            prod.history.forEach(item => {
+                const itemDate = new Date(item.timestamp);
+                const timeStr = itemDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + itemDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+                const div = document.createElement('div');
+                div.className = "relative pl-6 text-xs";
+
+                let dotColor = "bg-indigo-500";
+                if (item.type === 'create') dotColor = "bg-sky-500";
+                if (item.type === 'inquiry') dotColor = "bg-amber-500";
+                if (item.to === 'retornado') dotColor = "bg-emerald-500";
+
+                div.innerHTML = `
+                    <div class="absolute left-1.5 top-1 w-3 h-3 ${dotColor} rounded-full border-2 border-white shadow-xs"></div>
+                    <p class="font-bold text-slate-800">${item.text}</p>
+                    <p class="text-[10px] text-slate-400 font-mono mt-0.5">${timeStr}</p>
+                `;
+                timeline.appendChild(div);
+            });
+
+            document.getElementById('modalDetails').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeDetailsModal() {
+            currentViewingProductId = null;
+            document.getElementById('modalDetails').classList.add('hidden');
+        }
+
+        function addDirectComment() {
+            if (!currentViewingProductId) return;
+            const input = document.getElementById('directCommentInput');
+            const comment = input.value.trim();
+            if (!comment) return;
+
+            const prod = products.find(p => p.id === currentViewingProductId);
+            if (!prod) return;
+
+            prod.history.unshift({
+                timestamp: new Date().toISOString(),
+                text: `Nota: ${comment}`,
+                type: "note",
+                from: prod.status,
+                to: prod.status
+            });
+
+            saveToStorage();
+            input.value = '';
+            openDetailsModal(currentViewingProductId);
+        }
+
+        function reprintFromDetails() {
+            if (currentViewingProductId) {
+                openReceiptModal(currentViewingProductId);
+            }
+        }
+
+        // --- COMPROBANTE DE INGRESO Y VISTA PREVIA ---
+        function openReceiptModal(prodId) {
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            const storeInfo = STORES_INFO[prod.store] || STORES_INFO["Dos Hermanos"];
+
+            document.getElementById('receiptNumber').innerText = "N° " + (prod.receiptCode || '0000');
+            document.getElementById('receiptHeaderStore').innerText = "Tienda: " + (prod.store || "Dos Hermanos");
+            
+            document.getElementById('receiptStoreAddress').querySelector('span').innerText = storeInfo.address;
+            document.getElementById('receiptStorePhone').innerText = storeInfo.phone;
+            document.getElementById('receiptStoreEmail').innerText = storeInfo.email;
+
+            document.getElementById('receiptClientName').innerText = prod.client;
+            document.getElementById('receiptClientPhone').innerText = prod.phone || 'N/A';
+            
+            const createdDate = new Date(prod.createdAt);
+            document.getElementById('receiptDate').innerText = "Fecha: " + createdDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            document.getElementById('receiptDateTime').innerText = createdDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            document.getElementById('receiptArticleType').innerText = prod.articleType || 'Servicio Técnico';
+            document.getElementById('receiptBrand').innerText = prod.brand || 'N/A';
+            document.getElementById('receiptModel').innerText = prod.model || prod.product;
+            document.getElementById('receiptSerial').innerText = prod.serial;
+            document.getElementById('receiptDiagnostic').innerText = prod.desc;
+
+            // Bloque dinámico de Reparación en Recibo
+            const repairBlock = document.getElementById('receiptRepairBlock');
+            if (prod.repairDetails && prod.workshopOrderNumber) {
+                document.getElementById('receiptWorkshopOrderLabel').innerText = "N° Orden Taller: " + prod.workshopOrderNumber;
+                document.getElementById('receiptRepairText').innerText = prod.repairDetails;
+                repairBlock.classList.remove('hidden');
+            } else {
+                repairBlock.classList.add('hidden');
+            }
+
+            const accContainer = document.getElementById('receiptAccessories');
+            accContainer.innerHTML = '';
+            if (prod.accessories && prod.accessories.length > 0) {
+                prod.accessories.forEach(acc => {
+                    const tag = document.createElement('span');
+                    tag.className = "text-[11px] font-semibold px-2 py-0.5 bg-indigo-50 border border-indigo-200 rounded text-indigo-900";
+                    tag.innerText = acc;
+                    accContainer.appendChild(tag);
+                });
+            } else {
+                accContainer.innerHTML = '<span class="text-xs text-slate-400 italic">Ningún accesorio entregado</span>';
+            }
+
+            document.getElementById('modalReceipt').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('modalReceipt').classList.add('hidden');
+        }
+
+        function printReceipt() {
+            window.print();
+        }
+
+        // --- ELIMINACIÓN DE REGISTROS ---
+        function openDeleteModal(prodId) {
+            pendingDeleteId = prodId;
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+
+            document.getElementById('deleteModalMessage').innerText = `¿Estás seguro de eliminar el equipo "${prod.product}" (S/N: ${prod.serial})? Esta acción no se puede deshacer.`;
+            document.getElementById('btnConfirmDelete').onclick = confirmDelete;
+            document.getElementById('modalDelete').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('modalDelete').classList.add('hidden');
+        }
+
+        function confirmDelete() {
+            if (!pendingDeleteId) return;
+
+            products = products.filter(p => p.id !== pendingDeleteId);
+            saveToStorage();
+            closeDeleteModal();
+            renderBoard();
+        }
+    </script>
+</body>
+</html>
